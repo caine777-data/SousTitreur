@@ -1,0 +1,157 @@
+name: Build
+
+# Compile SousTitreur et fabrique tous les livrables en un seul run :
+#   Windows :
+#     • SousTitreur-Setup.exe   installeur (menu Démarrer, Bureau, désinstalleur)
+#     • SousTitreur.exe         exécutable portable, sans installation
+#   macOS :
+#     • SousTitreur.dmg         image disque (glisser dans Applications)
+#
+# Déclencheur : bouton « Run workflow » dans l'onglet Actions.
+# Les fichiers se téléchargent en bas de la page du run (section Artifacts).
+# Le numéro de version est lu dans __version__.py.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Tests du découpage
+        run: python -m unittest discover -s tests -v
+
+  # ─────────────────────────────── WINDOWS ───────────────────────────────
+  build-windows:
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # --collect-all imageio_ffmpeg : embarque ffmpeg (extraction du son).
+      # --add-data assets : embarque la page de l'éditeur.
+      - name: Compiler SousTitreur.exe (portable)
+        run: |
+          pyinstaller --onefile --windowed --name "SousTitreur" `
+            --version-file version.txt `
+            --collect-all customtkinter `
+            --collect-all keyring `
+            --collect-all tkinterdnd2 `
+            --collect-all imageio_ffmpeg `
+            --collect-all certifi `
+            --add-data "assets;assets" `
+            app.py
+
+      - name: Publier l'exe portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SousTitreur-Windows-portable
+          path: dist/SousTitreur.exe
+
+      - name: Installer Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      # Installation SANS droits administrateur (dans le profil utilisateur),
+      # avec raccourcis menu Démarrer + Bureau et désinstalleur.
+      - name: Fabriquer l'installeur (Inno Setup)
+        run: |
+          $version = (Select-String -Path "__version__.py" -Pattern '__version__\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          if (-not $version) { throw "Version introuvable dans __version__.py" }
+          Write-Host "Version : $version"
+          $iss = @"
+          [Setup]
+          AppName=SousTitreur
+          AppVersion=$version
+          AppPublisher=Universite de Toulouse
+          AppCopyright=(c) Copyright 2026 Cedric MONNA
+          DefaultDirName={localappdata}\Programs\SousTitreur
+          DefaultGroupName=SousTitreur
+          PrivilegesRequired=lowest
+          OutputDir=installer
+          OutputBaseFilename=SousTitreur-Setup
+          Compression=lzma
+          SolidCompression=yes
+          WizardStyle=modern
+
+          [Languages]
+          Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+
+          [Files]
+          Source: "dist\SousTitreur.exe"; DestDir: "{app}"; Flags: ignoreversion
+
+          [Icons]
+          Name: "{group}\SousTitreur"; Filename: "{app}\SousTitreur.exe"
+          Name: "{group}\Désinstaller SousTitreur"; Filename: "{uninstallexe}"
+          Name: "{userdesktop}\SousTitreur"; Filename: "{app}\SousTitreur.exe"
+
+          [Run]
+          Filename: "{app}\SousTitreur.exe"; Description: "Lancer SousTitreur"; Flags: nowait postinstall skipifsilent
+          "@
+          # Encodage UTF-8 avec BOM : Inno Setup en a besoin pour les accents.
+          Set-Content -Path "SousTitreur.iss" -Value $iss -Encoding utf8BOM
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "SousTitreur.iss"
+
+      - name: Publier l'installeur Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: SousTitreur-Windows-Setup
+          path: installer/SousTitreur-Setup.exe
+
+  # ──────────────────────────────── macOS ────────────────────────────────
+  build-macos:
+    needs: tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compiler SousTitreur.app
+        run: |
+          pyinstaller --onefile --windowed --name "SousTitreur" \
+            --collect-all customtkinter \
+            --collect-all keyring \
+            --collect-all tkinterdnd2 \
+            --collect-all imageio_ffmpeg \
+            --collect-all certifi \
+            --add-data "assets:assets" \
+            app.py
+
+      # Signature ad hoc : sans elle, macOS (Apple Silicon) déclare l'appli
+      # « endommagée ». Voir les notes du workflow de PodAdmin.
+      - name: Signer (signature ad hoc)
+        run: |
+          codesign --force --deep --sign - "dist/SousTitreur.app"
+          codesign --verify --deep --strict --verbose=2 "dist/SousTitreur.app"
+
+      # ditto (et non cp ou zip) : préserve la signature du paquet.
+      - name: Fabriquer le DMG
+        run: |
+          mkdir -p dmg_stage
+          ditto "dist/SousTitreur.app" "dmg_stage/SousTitreur.app"
+          ln -s /Applications dmg_stage/Applications
+          hdiutil create -volname "SousTitreur" -srcfolder dmg_stage -ov -format UDZO "dist/SousTitreur.dmg"
+
+      - name: Publier le DMG macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: SousTitreur-macOS-DMG
+          path: dist/SousTitreur.dmg

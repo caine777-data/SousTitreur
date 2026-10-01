@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+installer/
+*.iss
+.venv/
+venv/
+.impeccable/

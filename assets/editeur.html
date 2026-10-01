@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SousTitreur, correction</title>
+<style>
+:root{
+  --fond:#f4f5f7; --carte:#fff; --texte:#1b1d21; --doux:#5d6470; --bord:#dde0e5;
+  --accent:#6b2c91; --accent-doux:#f1e9f7; --actif:#fff7d6; --actif-bord:#e6b800;
+  --ok:#1f7a3a; --alerte:#b3261e; --alerte-doux:#fdecea; --moyen:#9a6700;
+  --st-fond:rgba(0,0,0,.78); --st-texte:#fff;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --fond:#15171b; --carte:#1f2227; --texte:#e8eaed; --doux:#9aa1ad; --bord:#33373e;
+    --accent:#c79bf2; --accent-doux:#2d2338; --actif:#3a3320; --actif-bord:#c9a227;
+    --ok:#5cc47c; --alerte:#ff8a80; --alerte-doux:#3b2120; --moyen:#e0b54a;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--fond);color:var(--texte);
+  font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--bord);background:var(--carte);
+  border-radius:6px;padding:5px 10px}
+button:hover{border-color:var(--accent)}
+button.primaire{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){button.primaire{color:#1b1d21}}
+button:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=number]{border:1px solid var(--bord);background:var(--carte);
+  border-radius:6px;padding:5px 8px}
+
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--carte);
+  border-bottom:1px solid var(--bord);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:40vw}
+#etat{color:var(--doux);font-size:13px}
+header .espace{flex:1}
+
+main{display:grid;grid-template-columns:minmax(360px,46%) 1fr;gap:16px;padding:16px;
+  height:calc(100% - 58px)}
+@media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+
+#gauche{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:10px;padding:12px}
+#ecran{position:relative;background:#000;border-radius:10px;overflow:hidden;
+  aspect-ratio:16/9;container-type:inline-size}
+#ecran video{width:100%;height:100%;display:block;background:#000}
+#incruste{position:absolute;left:0;right:0;bottom:7%;text-align:center;pointer-events:none;
+  padding:0 5%}
+#incruste span{display:inline;background:var(--st-fond);color:var(--st-texte);
+  font-size:max(13px,3.6cqi);line-height:1.35;padding:.08em .35em;white-space:pre-wrap;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#message-media{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  color:#ddd;text-align:center;padding:20px}
+.commandes{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#temps{font-variant-numeric:tabular-nums;color:var(--doux);margin-left:auto}
+.outils h2{font-size:13px;margin:0 0 8px;color:var(--doux);font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em}
+.ligne-outil{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.ligne-outil input[type=text]{flex:1;min-width:120px}
+.resume{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--doux)}
+.resume b{color:var(--texte)}
+kbd{border:1px solid var(--bord);border-bottom-width:2px;border-radius:4px;padding:0 4px;
+  font-size:12px;background:var(--fond)}
+.aide{font-size:12.5px;color:var(--doux);display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
+
+#droite{min-height:0;overflow:auto;border-radius:10px}
+#liste{display:flex;flex-direction:column;gap:6px;padding-bottom:40vh}
+.st{display:grid;grid-template-columns:38px 1fr;gap:8px;background:var(--carte);
+  border:1px solid var(--bord);border-radius:8px;padding:8px 10px}
+.st.actif{background:var(--actif);border-color:var(--actif-bord)}
+.st.alerte{border-left:4px solid var(--alerte)}
+.st.cache{display:none}
+.num{color:var(--doux);font-variant-numeric:tabular-nums;font-size:12px;padding-top:4px;
+  cursor:pointer;text-align:right}
+.num:hover{color:var(--accent)}
+.entete-st{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+.entete-st input.t{width:98px;font-variant-numeric:tabular-nums;font-size:12.5px;padding:2px 5px}
+.duree{font-size:12px;color:var(--doux);font-variant-numeric:tabular-nums}
+.actions{margin-left:auto;display:flex;gap:3px;opacity:.55}
+.st:hover .actions,.st:focus-within .actions{opacity:1}
+.actions button{padding:1px 7px;font-size:12px}
+.corps-st{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}
+textarea{width:100%;resize:vertical;border:1px solid var(--bord);background:var(--fond);
+  border-radius:6px;padding:5px 8px;line-height:1.4;font-size:15px;min-height:52px;
+  font-family:inherit}
+textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;background:var(--carte)}
+.compteurs{font-size:12px;font-variant-numeric:tabular-nums;color:var(--doux);
+  display:flex;flex-direction:column;gap:2px;padding-top:6px;min-width:26px;text-align:right}
+.compteurs .trop{color:var(--alerte);font-weight:700}
+.badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.badge{font-size:11.5px;padding:1px 7px;border-radius:10px;background:var(--alerte-doux);
+  color:var(--alerte)}
+mark{background:#ffe36e;color:#000;border-radius:2px}
+
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;
+  color:#fff;padding:10px 16px;border-radius:8px;display:none;z-index:20;max-width:90vw}
+dialog{border:1px solid var(--bord);border-radius:10px;background:var(--carte);color:var(--texte);
+  max-width:460px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog label{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:8px 0}
+dialog input[type=number]{width:90px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titre">Chargement…</h1>
+  <span id="etat"></span>
+  <span class="espace"></span>
+  <button id="b-annuler" title="Annuler (Ctrl+Z hors zone de texte)" disabled>↶ Annuler</button>
+  <button id="b-retablir" title="Rétablir" disabled>↷ Rétablir</button>
+  <label><input type="checkbox" id="f-vtt" checked> VTT</label>
+  <label><input type="checkbox" id="f-srt"> SRT</label>
+  <button class="primaire" id="b-exporter">Exporter les sous-titres</button>
+</header>
+
+<main>
+  <section id="gauche">
+    <div id="ecran">
+      <video id="video" preload="metadata" controls></video>
+      <div id="incruste"><span></span></div>
+      <div id="message-media"></div>
+    </div>
+    <div class="commandes">
+      <button id="b-prec" title="Sous-titre précédent (Alt+↑)">⏮</button>
+      <button id="b-lecture" title="Lecture / pause (Échap)">▶ Lecture</button>
+      <button id="b-suiv" title="Sous-titre suivant (Alt+↓)">⏭</button>
+      <label title="Vitesse de lecture">Vitesse
+        <select id="vitesse"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option></select>
+      </label>
+      <label><input type="checkbox" id="suivre" checked> Suivre la lecture</label>
+      <span id="temps">00:00</span>
+    </div>
+
+    <div class="carte outils">
+      <h2>Rechercher et remplacer</h2>
+      <div class="ligne-outil">
+        <input type="text" id="r-cherche" placeholder="Rechercher">
+        <input type="text" id="r-remplace" placeholder="Remplacer par">
+      </div>
+      <div class="ligne-outil">
+        <label><input type="checkbox" id="r-casse"> Respecter la casse</label>
+        <label><input type="checkbox" id="r-mot"> Mot entier</label>
+        <span id="r-compte" class="duree"></span>
+        <span class="espace" style="flex:1"></span>
+        <button id="r-suivant">Suivant</button>
+        <button id="r-tout">Tout remplacer</button>
+      </div>
+    </div>
+
+    <div class="carte outils">
+      <h2>Contrôle</h2>
+      <div class="resume" id="resume"></div>
+      <div class="ligne-outil" style="margin-top:8px">
+        <label><input type="checkbox" id="seulement-alertes"> Afficher seulement les sous-titres à revoir</label>
+      </div>
+      <div class="ligne-outil">
+        <button id="b-equilibrer-tout" title="Recalcule les retours à la ligne des sous-titres trop longs">Équilibrer les lignes trop longues</button>
+        <button id="b-redecouper" title="Refait tout le découpage automatique">Refaire le découpage…</button>
+      </div>
+    </div>
+
+    <div class="carte outils">
+      <h2>Raccourcis</h2>
+      <div class="aide">
+        <span><kbd>Échap</kbd></span><span>lecture / pause</span>
+        <span><kbd class="alt">Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd></span><span>sous-titre précédent / suivant</span>
+        <span><kbd class="alt">Alt</kbd>+<kbd>←</kbd> <kbd>→</kbd></span><span>reculer / avancer de 2 s</span>
+        <span><kbd class="mod">Ctrl</kbd>+<kbd>Entrée</kbd></span><span>couper le sous-titre à l'emplacement du curseur</span>
+        <span><kbd class="mod">Ctrl</kbd>+<kbd>S</kbd></span><span>enregistrer</span>
+        <span>Clic sur le numéro</span><span>lire à partir de ce sous-titre</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="droite"><div id="liste"></div></section>
+</main>
+
+<dialog id="d-redecouper">
+  <form method="dialog">
+    <h3 style="margin-top:0">Refaire le découpage</h3>
+    <p style="color:var(--alerte)">Le découpage repart de la transcription d'origine : toutes vos corrections seront perdues.</p>
+    <label>Caractères par ligne <input type="number" id="p-cpl" min="20" max="80"></label>
+    <label>Lignes par sous-titre <input type="number" id="p-lignes" min="1" max="3"></label>
+    <label>Durée maximale (s) <input type="number" id="p-dmax" min="2" max="10" step="0.5"></label>
+    <label>Durée minimale (s) <input type="number" id="p-dmin" min="0.5" max="3" step="0.1"></label>
+    <label>Vitesse de lecture maximale (car./s) <input type="number" id="p-cps" min="10" max="30"></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button value="non">Annuler</button>
+      <button value="oui" class="primaire">Refaire le découpage</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const PID = location.pathname.split("/").pop();
+const JETON = new URLSearchParams(location.search).get("t");
+const API = `/api/${PID}?t=${encodeURIComponent(JETON)}`;
+const apiAction = a => `/api/${PID}/${a}?t=${encodeURIComponent(JETON)}`;
+
+let S = [];            // sous-titres [{start,end,text}]
+let P = {};            // paramètres de découpage
+let actif = -1;
+let pile = [], pileRetablir = [];
+let minuterieSauvegarde = null, modifie = false;
+
+/* Mots après lesquels on évite de couper une ligne (miroir de sous_titres.py). */
+const FAIBLES = new Set(("le la les l' un une des du de d' au aux ce cet cette ces mon ma mes ton ta tes son sa ses notre nos votre vos leur leurs " +
+  "à en dans par pour sur sous avec sans chez vers entre contre depuis pendant selon après avant jusqu' " +
+  "et ou mais donc or ni car que qu' qui dont où si comme quand lorsque puisque parce " +
+  "je j' tu il elle on nous vous ils elles ne n' se s' me m' te t' y est sont a ont c'est " +
+  "the an of to in on at for with and but that which who is are was were").split(" "));
+
+/* ─────────── Outils temps ─────────── */
+function fmt(t){
+  t = Math.max(0, t); const h = Math.floor(t/3600), m = Math.floor(t%3600/60), s = t%60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${s.toFixed(3).padStart(6,"0")}`;
+}
+function fmtCourt(t){ const m = Math.floor(t/60), s = Math.floor(t%60); return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`; }
+function lire(v){
+  const p = String(v).trim().replace(",", ".").split(":").map(Number);
+  if (p.some(isNaN)) return null;
+  return p.reduce((acc, x) => acc*60 + x, 0);
+}
+function toast(msg, ms=3500){ const t=$("#toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._m); t._m=setTimeout(()=>t.style.display="none", ms); }
+
+/* ─────────── Contrôle (miroir de verifier()) ─────────── */
+function alertes(s){
+  const a = [], lignes = s.text.split("\n"), d = s.end - s.start;
+  if (lignes.length > P.lignes_max) a.push(`${lignes.length} lignes`);
+  lignes.forEach((l,i) => { if (l.length > P.car_par_ligne) a.push(`ligne ${i+1} : ${l.length} car.`); });
+  if (d < P.duree_min - 1e-6) a.push(`trop bref (${d.toFixed(1)} s)`);
+  if (d > P.duree_max + 1e-6) a.push(`trop long (${d.toFixed(1)} s)`);
+  const nb = s.text.replace(/\n/g,"").length;
+  if (d > 0 && nb/d > P.cps_max) a.push(`lecture rapide (${Math.round(nb/d)} car./s)`);
+  if (!s.text.trim()) a.push("vide");
+  return a;
+}
+
+/* ─────────── Équilibrage des lignes (miroir de couper_lignes) ─────────── */
+function coutCoupure(m, suivant){
+  const n = m.replace(/[»"”)  ]+$/,"");
+  const maj = x => x && x[0] !== x[0].toLowerCase();
+  if (maj(m) && maj(suivant) && !/[.?!…,;:]$/.test(n)) return 4;   // « George Doran »
+  if (/[.?!…]$/.test(n)) return -1;
+  if (/[,;:]$/.test(m)) return -0.6;
+  const b = m.toLowerCase().replace(/^[«"“(\[]+|[»"”)\]]+$/g,"");
+  if (FAIBLES.has(b) || /['’]$/.test(b)) return 3;
+  return 0;
+}
+function equilibrer(texte){
+  const mots = texte.replace(/\n/g," ").split(/ +/).filter(Boolean);
+  const plein = mots.join(" ");
+  if (plein.length <= P.car_par_ligne || mots.length < 2) return plein;
+  let meilleur = null;
+  // 2 lignes (cas courant)
+  for (let k = 1; k < mots.length; k++){
+    const a = mots.slice(0,k).join(" "), b = mots.slice(k).join(" ");
+    if (a.length > P.car_par_ligne || b.length > P.car_par_ligne) continue;
+    const c = coutCoupure(mots[k-1], mots[k]) + 2*Math.abs(a.length-b.length)/P.car_par_ligne + (a.length > b.length+8 ? .3 : 0);
+    if (!meilleur || c < meilleur.c) meilleur = {c, t: a + "\n" + b};
+  }
+  if (meilleur) return meilleur.t;
+  // Trop long pour 2 lignes : coupure gloutonne (le sous-titre restera signalé).
+  const lignes = []; let l = "";
+  for (const m of mots){ if ((l + " " + m).trim().length > P.car_par_ligne && l){ lignes.push(l); l = m; } else l = (l+" "+m).trim(); }
+  if (l) lignes.push(l);
+  return lignes.join("\n");
+}
+
+/* ─────────── Historique (annuler / rétablir) ─────────── */
+function memoriser(){
+  pile.push(JSON.stringify(S)); if (pile.length > 200) pile.shift();
+  pileRetablir = []; majBoutonsHisto();
+}
+function majBoutonsHisto(){ $("#b-annuler").disabled = !pile.length; $("#b-retablir").disabled = !pileRetablir.length; }
+function annuler(){ if (!pile.length) return; pileRetablir.push(JSON.stringify(S)); S = JSON.parse(pile.pop()); rendre(); aSauver(); majBoutonsHisto(); }
+function retablir(){ if (!pileRetablir.length) return; pile.push(JSON.stringify(S)); S = JSON.parse(pileRetablir.pop()); rendre(); aSauver(); majBoutonsHisto(); }
+
+/* ─────────── Rendu de la liste ─────────── */
+const liste = $("#liste");
+function htmlSt(s, i){
+  return `<div class="st" data-i="${i}">
+    <div class="num" title="Lire à partir d'ici">${i+1}</div>
+    <div>
+      <div class="entete-st">
+        <input class="t" data-c="start" value="${fmt(s.start)}" title="Début">
+        <span class="duree">→</span>
+        <input class="t" data-c="end" value="${fmt(s.end)}" title="Fin">
+        <span class="duree d"></span>
+        <span class="actions">
+          <button data-a="debut" title="Placer le début à la position de lecture">⇤ ici</button>
+          <button data-a="fin" title="Placer la fin à la position de lecture">ici ⇥</button>
+          <button data-a="equilibrer" title="Recalculer les retours à la ligne">≡</button>
+          <button data-a="couper" title="Couper à l'emplacement du curseur (Ctrl+Entrée)">✂</button>
+          <button data-a="fusion" title="Fusionner avec le suivant">⤓</button>
+          <button data-a="suppr" title="Supprimer">✕</button>
+        </span>
+      </div>
+      <div class="corps-st">
+        <textarea rows="2" spellcheck="true" lang="${document.documentElement.lang}"></textarea>
+        <div class="compteurs"></div>
+      </div>
+      <div class="badges"></div>
+    </div>
+  </div>`;
+}
+function rendre(){
+  liste.innerHTML = S.map(htmlSt).join("");
+  liste.querySelectorAll(".st").forEach((el, i) => { el.querySelector("textarea").value = S[i].text; majSt(i); });
+  actif = -1; majResume(); majIncruste(); filtrer();
+}
+function elSt(i){ return liste.children[i]; }
+function majSt(i){
+  const el = elSt(i), s = S[i]; if (!el) return;
+  const a = alertes(s);
+  el.classList.toggle("alerte", a.length > 0);
+  el.querySelector(".d").textContent = `${(s.end - s.start).toFixed(1)} s`;
+  el.querySelector(".compteurs").innerHTML = s.text.split("\n").map(l =>
+    `<span class="${l.length > P.car_par_ligne ? "trop" : ""}">${l.length}</span>`).join("");
+  el.querySelector(".badges").innerHTML = a.map(x => `<span class="badge">${x}</span>`).join("");
+  const ta = el.querySelector("textarea");
+  ta.rows = Math.max(2, s.text.split("\n").length);
+}
+function majResume(){
+  const n = S.length, revoir = S.filter(s => alertes(s).length).length;
+  const car = S.reduce((a,s) => a + s.text.replace(/\n/g,"").length, 0);
+  $("#resume").innerHTML = `<span><b>${n}</b> sous-titres</span><span><b style="color:${revoir ? "var(--alerte)" : "var(--ok)"}">${revoir}</b> à revoir</span>` +
+    `<span>norme : <b>${P.car_par_ligne}</b> car. × <b>${P.lignes_max}</b> lignes, ${P.duree_min}–${P.duree_max} s</span><span>${car} caractères</span>`;
+}
+function filtrer(){
+  const seul = $("#seulement-alertes").checked;
+  S.forEach((s,i) => elSt(i).classList.toggle("cache", seul && !alertes(s).length));
+}
+
+/* ─────────── Édition ─────────── */
+let focusMemorise = null;
+liste.addEventListener("focusin", e => {
+  if (e.target.tagName === "TEXTAREA" || e.target.classList.contains("t")){
+    const i = +e.target.closest(".st").dataset.i;
+    if (focusMemorise !== i){ memoriser(); focusMemorise = i; }
+  }
+});
+liste.addEventListener("focusout", () => { focusMemorise = null; });
+liste.addEventListener("input", e => {
+  const el = e.target.closest(".st"); if (!el) return;
+  const i = +el.dataset.i;
+  if (e.target.tagName === "TEXTAREA"){ S[i].text = e.target.value; majSt(i); majResume(); majIncruste(true); aSauver(); }
+});
+liste.addEventListener("change", e => {
+  if (!e.target.classList.contains("t")) return;
+  const i = +e.target.closest(".st").dataset.i, v = lire(e.target.value);
+  if (v === null){ e.target.value = fmt(S[i][e.target.dataset.c]); toast("Horaire illisible : utilisez le format 00:01:23.450"); return; }
+  S[i][e.target.dataset.c] = v;
+  if (S[i].end <= S[i].start) S[i].end = S[i].start + 0.5;
+  e.target.value = fmt(v); majSt(i); majResume(); aSauver();
+});
+liste.addEventListener("click", e => {
+  const el = e.target.closest(".st"); if (!el) return;
+  const i = +el.dataset.i;
+  if (e.target.classList.contains("num")){ allerA(i, true); return; }
+  const a = e.target.dataset.a; if (!a) return;
+  const v = $("#video");
+  if (a === "debut"){ memoriser(); S[i].start = v.currentTime; if (S[i].end <= S[i].start) S[i].end = S[i].start + 1; rafraichirLigne(i); }
+  if (a === "fin"){ memoriser(); S[i].end = Math.max(v.currentTime, S[i].start + 0.2); rafraichirLigne(i); }
+  if (a === "equilibrer"){ memoriser(); S[i].text = equilibrer(S[i].text); rafraichirLigne(i); }
+  if (a === "couper") couper(i, el.querySelector("textarea").selectionStart);
+  if (a === "fusion") fusionner(i);
+  if (a === "suppr"){ memoriser(); S.splice(i,1); rendre(); aSauver(); }
+});
+function rafraichirLigne(i){
+  const el = elSt(i);
+  el.querySelector("textarea").value = S[i].text;
+  el.querySelector('[data-c="start"]').value = fmt(S[i].start);
+  el.querySelector('[data-c="end"]').value = fmt(S[i].end);
+  majSt(i); majResume(); majIncruste(true); aSauver();
+}
+function couper(i, pos){
+  const s = S[i], t = s.text;
+  if (pos === undefined || pos <= 0 || pos >= t.length){ toast("Placez le curseur dans le texte, à l'endroit de la coupure."); return; }
+  memoriser();
+  const a = t.slice(0,pos).trim(), b = t.slice(pos).trim();
+  const ratio = a.replace(/\n/g,"").length / Math.max(1, (a+b).replace(/\n/g,"").length);
+  const milieu = s.start + (s.end - s.start) * ratio;
+  S.splice(i, 1, {start: s.start, end: milieu - 0.04, text: equilibrer(a)}, {start: milieu + 0.04, end: s.end, text: equilibrer(b)});
+  rendre(); aSauver();
+  elSt(i+1).querySelector("textarea").focus();
+}
+function fusionner(i){
+  if (i >= S.length - 1) return;
+  memoriser();
+  const a = S[i], b = S[i+1];
+  S.splice(i, 2, {start: a.start, end: b.end, text: equilibrer(a.text + " " + b.text)});
+  rendre(); aSauver();
+  elSt(i).querySelector("textarea").focus();
+}
+
+/* ─────────── Enregistrement ─────────── */
+function aSauver(){
+  modifie = true; $("#etat").textContent = "Modifications non enregistrées…";
+  clearTimeout(minuterieSauvegarde); minuterieSauvegarde = setTimeout(sauver, 1500);
+}
+async function sauver(){
+  clearTimeout(minuterieSauvegarde);
+  if (!modifie) return true;
+  try{
+    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({sous_titres: S})});
+    if (!r.ok) throw new Error((await r.json()).erreur || r.status);
+    modifie = false; $("#etat").textContent = "Enregistré à " + new Date().toLocaleTimeString("fr-FR");
+    return true;
+  }catch(err){ $("#etat").textContent = "Échec de l'enregistrement : " + err.message; return false; }
+}
+window.addEventListener("beforeunload", e => { if (modifie){ sauver(); e.preventDefault(); e.returnValue = ""; } });
+
+$("#b-exporter").onclick = async () => {
+  const formats = [];
+  if ($("#f-vtt").checked) formats.push("vtt");
+  if ($("#f-srt").checked) formats.push("srt");
+  if (!formats.length){ toast("Cochez au moins un format."); return; }
+  const revoir = S.filter(s => alertes(s).length).length;
+  if (revoir && !confirm(`${revoir} sous-titre(s) ne respectent pas encore la norme. Exporter quand même ?`)) return;
+  await sauver();
+  const r = await fetch(apiAction("exporter"), {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({formats, sous_titres: S})});
+  const d = await r.json();
+  if (!r.ok){ toast("Échec de l'export : " + d.erreur, 6000); return; }
+  toast("Fichier(s) créé(s) : " + d.fichiers.join(" ; "), 8000);
+  $("#etat").textContent = "Exporté à " + new Date().toLocaleTimeString("fr-FR");
+};
+
+/* ─────────── Vidéo et incrustation ─────────── */
+const video = $("#video");
+function trouver(t){
+  let g = 0, d = S.length - 1;
+  while (g <= d){ const m = (g+d) >> 1; if (S[m].end < t) g = m+1; else if (S[m].start > t) d = m-1; else return m; }
+  return -1;
+}
+function majIncruste(force){
+  const i = trouver(video.currentTime);
+  $("#incruste span").textContent = i >= 0 ? S[i].text : "";
+  $("#incruste span").style.display = i >= 0 && S[i].text ? "" : "none";
+  if (i !== actif || force){
+    if (actif >= 0 && elSt(actif)) elSt(actif).classList.remove("actif");
+    actif = i;
+    if (i >= 0 && elSt(i)){
+      elSt(i).classList.add("actif");
+      const edition = document.activeElement && document.activeElement.closest && document.activeElement.closest(".st");
+      if ($("#suivre").checked && !video.paused && !edition) elSt(i).scrollIntoView({block:"center", behavior:"smooth"});
+    }
+  }
+  $("#temps").textContent = fmtCourt(video.currentTime) + (video.duration ? " / " + fmtCourt(video.duration) : "");
+}
+video.addEventListener("timeupdate", () => majIncruste());
+video.addEventListener("seeked", () => majIncruste());
+video.addEventListener("play", () => $("#b-lecture").textContent = "⏸ Pause");
+video.addEventListener("pause", () => $("#b-lecture").textContent = "▶ Lecture");
+function basculer(){ video.paused ? video.play() : video.pause(); }
+function allerA(i, jouer){
+  if (i < 0 || i >= S.length) return;
+  video.currentTime = S[i].start + 0.01;
+  elSt(i).scrollIntoView({block:"center"});
+  if (jouer) video.play();
+}
+$("#b-lecture").onclick = basculer;
+$("#b-prec").onclick = () => allerA(Math.max(0, (actif >= 0 ? actif : trouverApres(video.currentTime)) - 1), false);
+$("#b-suiv").onclick = () => allerA((actif >= 0 ? actif : trouverApres(video.currentTime) - 1) + 1, false);
+$("#vitesse").onchange = e => video.playbackRate = +e.target.value;
+function trouverApres(t){ const i = S.findIndex(s => s.start > t); return i < 0 ? S.length : i; }
+
+/* Raccourcis identiques sous Windows et macOS. Sur Mac, Ctrl+↑/↓ et Ctrl+Espace
+   sont pris par le système (Mission Control, changement de clavier) : on
+   propose donc Échap et Alt (⌥), et ⌘ remplace Ctrl. */
+const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+document.addEventListener("keydown", e => {
+  const mod = e.ctrlKey || e.metaKey, saisie = e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT";
+  if (e.key === "Escape" && !document.querySelector("dialog[open]")){ e.preventDefault(); basculer(); }
+  else if (e.ctrlKey && e.code === "Space"){ e.preventDefault(); basculer(); }
+  else if ((e.altKey || e.ctrlKey) && e.key === "ArrowUp"){ e.preventDefault(); $("#b-prec").click(); }
+  else if ((e.altKey || e.ctrlKey) && e.key === "ArrowDown"){ e.preventDefault(); $("#b-suiv").click(); }
+  else if (e.altKey && e.key === "ArrowLeft"){ e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 2); }
+  else if (e.altKey && e.key === "ArrowRight"){ e.preventDefault(); video.currentTime += 2; }
+  else if (mod && e.key.toLowerCase() === "s"){ e.preventDefault(); sauver(); }
+  else if (mod && e.key === "Enter" && e.target.tagName === "TEXTAREA"){
+    e.preventDefault(); couper(+e.target.closest(".st").dataset.i, e.target.selectionStart);
+  }
+  else if (mod && !e.shiftKey && e.key.toLowerCase() === "z" && !saisie){ e.preventDefault(); annuler(); }
+  else if (mod && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z")) && !saisie){ e.preventDefault(); retablir(); }
+});
+if (MAC){
+  document.querySelectorAll("kbd.mod").forEach(k => k.textContent = "⌘");
+  document.querySelectorAll("kbd.alt").forEach(k => k.textContent = "⌥");
+  document.querySelectorAll("[title]").forEach(el => el.title = el.title.replace(/Ctrl\+/g, "⌘").replace(/Alt\+/g, "⌥"));
+}
+$("#b-annuler").onclick = annuler;
+$("#b-retablir").onclick = retablir;
+
+/* ─────────── Rechercher / remplacer ─────────── */
+function motif(){
+  const q = $("#r-cherche").value; if (!q) return null;
+  let src = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if ($("#r-mot").checked) src = `(?<![\\p{L}\\p{N}])${src}(?![\\p{L}\\p{N}])`;
+  return new RegExp(src, "gu" + ($("#r-casse").checked ? "" : "i"));
+}
+function compter(){
+  const m = motif(); if (!m){ $("#r-compte").textContent = ""; return; }
+  let n = 0; S.forEach(s => n += (s.text.replace(/\n/g," ").match(m) || []).length);
+  $("#r-compte").textContent = n + " trouvé(s)";
+}
+["#r-cherche","#r-casse","#r-mot"].forEach(s => $(s).addEventListener("input", compter));
+let posRecherche = -1;
+$("#r-suivant").onclick = () => {
+  const m = motif(); if (!m) return;
+  for (let k = 1; k <= S.length; k++){
+    const i = (posRecherche + k) % S.length; m.lastIndex = 0;
+    if (m.test(S[i].text)){
+      posRecherche = i; const ta = elSt(i).querySelector("textarea");
+      elSt(i).classList.remove("cache"); ta.focus();
+      m.lastIndex = 0; const r = m.exec(ta.value); if (r) ta.setSelectionRange(r.index, r.index + r[0].length);
+      video.currentTime = S[i].start + 0.01; return;
+    }
+  }
+  toast("Aucune occurrence.");
+};
+$("#r-tout").onclick = () => {
+  const m = motif(); if (!m) return;
+  let n = 0; memoriser();
+  S.forEach(s => { const t = s.text.replace(m, () => { n++; return $("#r-remplace").value; }); s.text = t.split("\n").some(l => l.length > P.car_par_ligne) ? equilibrer(t) : t; });
+  rendre(); aSauver(); compter(); toast(n + " remplacement(s).");
+};
+
+/* ─────────── Contrôle global ─────────── */
+$("#seulement-alertes").onchange = filtrer;
+$("#b-equilibrer-tout").onclick = () => {
+  memoriser(); let n = 0;
+  S.forEach(s => { if (s.text.split("\n").some(l => l.length > P.car_par_ligne) || s.text.split("\n").length > P.lignes_max){ s.text = equilibrer(s.text); n++; } });
+  rendre(); aSauver(); toast(n + " sous-titre(s) rééquilibré(s).");
+};
+$("#b-redecouper").onclick = () => {
+  $("#p-cpl").value = P.car_par_ligne; $("#p-lignes").value = P.lignes_max; $("#p-dmax").value = P.duree_max;
+  $("#p-dmin").value = P.duree_min; $("#p-cps").value = P.cps_max;
+  $("#d-redecouper").showModal();
+};
+$("#d-redecouper").addEventListener("close", async () => {
+  if ($("#d-redecouper").returnValue !== "oui") return;
+  memoriser();
+  const parametres = {car_par_ligne: +$("#p-cpl").value, lignes_max: +$("#p-lignes").value,
+    duree_max: +$("#p-dmax").value, duree_min: +$("#p-dmin").value, cps_max: +$("#p-cps").value};
+  const r = await fetch(apiAction("redecouper"), {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({parametres})});
+  const d = await r.json();
+  if (!r.ok){ toast("Échec : " + d.erreur); return; }
+  S = d.sous_titres; P = d.parametres; modifie = false; rendre();
+  $("#etat").textContent = "Découpage refait (Annuler pour revenir en arrière)";
+});
+
+/* ─────────── Démarrage ─────────── */
+(async () => {
+  const r = await fetch(API);
+  if (!r.ok){ $("#titre").textContent = "Projet introuvable ou lien expiré. Rouvrez l'éditeur depuis SousTitreur."; return; }
+  const d = await r.json();
+  S = d.sous_titres; P = d.parametres;
+  document.title = d.nom + ", SousTitreur";
+  document.documentElement.lang = d.langue || "fr";
+  $("#titre").textContent = d.nom;
+  $("#f-vtt").checked = d.formats.includes("vtt"); $("#f-srt").checked = d.formats.includes("srt");
+  $("#etat").textContent = d.etat === "corrige" ? "Déjà exporté une fois" : "";
+  const src = n => `/${n}/${PID}?t=${encodeURIComponent(JETON)}`;
+  const msg = $("#message-media");
+  const secours = () => {
+    if (d.audio && !video.src.includes("/audio/")){ video.src = src("audio"); msg.style.display = "flex"; msg.style.pointerEvents = "none";
+      msg.textContent = "Le navigateur ne sait pas lire cette vidéo : lecture du son seul."; }
+    else { msg.style.display = "flex"; msg.textContent = "Vidéo introuvable ou illisible. Vous pouvez tout de même corriger le texte."; }
+  };
+  video.addEventListener("error", secours);
+  if (d.video) video.src = src("media"); else secours();
+  rendre();
+})();
+</script>
+</body>
+</html>
