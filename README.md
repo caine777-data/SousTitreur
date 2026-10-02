@@ -2,7 +2,7 @@
 
 Sous-titres aux normes à partir d'Aristote, avec relecture avant export.
 
-Université de Toulouse, MFCA. Version 0.1.1.
+Université de Toulouse, MFCA. Version 0.1.2.
 
 ## Le problème réglé
 

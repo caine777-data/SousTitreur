@@ -569,9 +569,9 @@ class FenetreReglages(ctk.CTkToplevel):
         self.e_url = champ("Adresse de l'API", c.get("url_aristote", ""))
         self.e_id = champ("Identifiant client", cid)
         self.e_secret = champ("Secret client", secret, masque=True)
-        ctk.CTkLabel(f, text="Ce sont les valeurs AI_ENRICHMENT_CLIENT_ID et "
-                             "AI_ENRICHMENT_CLIENT_SECRET du serveur Pod.\n"
-                             "Elles sont rangées dans le coffre-fort de Windows ou macOS.",
+        ctk.CTkLabel(f, text="Identifiants fournis avec l'application : rien à modifier.\n"
+                             "Si vous en saisissez d'autres, ils sont rangés dans le "
+                             "coffre-fort de Windows ou macOS.",
                      text_color=("gray40", "gray65"), justify="left", anchor="w",
                      font=ctk.CTkFont(size=12)).grid(row=r, column=0, columnspan=2, sticky="w")
         r += 1

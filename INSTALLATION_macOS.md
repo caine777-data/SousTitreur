@@ -29,16 +29,13 @@ codesign --force --deep --sign -
 
 L'application n'est pas endommagée : ce message signale seulement une signature manquante.
 
-## Saisir les identifiants
+## Vérifier la connexion
 
-La fenêtre **Réglages** s'ouvre au premier lancement.
+Les identifiants sont déjà dans l'application. Vous n'avez rien à saisir.
 
-1. Laissez l'adresse de l'API : `https://stt.ilaas.fr/api`.
-2. Saisissez l'identifiant client et le secret client. Cédric vous les transmet.
-3. Cliquez sur **Tester la connexion**. Le message « Connexion réussie » s'affiche en vert.
-4. Cliquez sur **Enregistrer**.
-
-macOS demande l'accès au Trousseau. Cliquez sur **Toujours autoriser**.
+1. Cliquez sur **Réglages**.
+2. Cliquez sur **Tester la connexion**. Le message « Connexion réussie » s'affiche en vert.
+3. Cliquez sur **Annuler**.
 
 ## Sous-titrer une vidéo
 

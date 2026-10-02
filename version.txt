@@ -4,8 +4,8 @@
 
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(0, 1, 1, 0),
-    prodvers=(0, 1, 1, 0),
+    filevers=(0, 1, 2, 0),
+    prodvers=(0, 1, 2, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -21,9 +21,9 @@ VSVersionInfo(
           [
             StringStruct(u'OriginalFilename', u'SousTitreur.exe'),
             StringStruct(u'FileDescription',  u'SousTitreur - Sous-titres Aristote aux normes'),
-            StringStruct(u'FileVersion',      u'0.1.1'),
+            StringStruct(u'FileVersion',      u'0.1.2'),
             StringStruct(u'ProductName',      u'SousTitreur'),
-            StringStruct(u'ProductVersion',   u'0.1.1'),
+            StringStruct(u'ProductVersion',   u'0.1.2'),
             StringStruct(u'CompanyName',      u'Universite de Toulouse - MFCA'),
             StringStruct(u'LegalCopyright',   u'(c) Copyright 2026 Cedric MONNA'),
             StringStruct(u'Comments',         u'Usage interne - non redistribuable.'),
